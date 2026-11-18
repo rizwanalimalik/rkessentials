@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickList Pro | 1-Click E-Commerce Product Importer & Lister</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top App Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
+        <div>
+          <h1>QuickList Pro</h1>
+          <span>1-Click Product URL Importer & Publisher</span>
+        </div>
+      </div>
+
+      <div class="store-platform-badge">
+        <span class="platform-label">Export Destination:</span>
+        <select id="exportPlatformSelect">
+          <option value="Shopify (CSV / JSON API)">Shopify (CSV / API)</option>
+          <option value="WooCommerce (CSV / REST)">WooCommerce (WordPress)</option>
+          <option value="Custom E-Commerce Store (JSON)">Custom Store API / Webhook</option>
+          <option value="Daraz / Amazon Format">Daraz / Local Marketplace</option>
+        </select>
+      </div>
+
+      <div class="header-stats">
+        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Products Ready</span>
+        <button class="btn btn-primary-sm" onclick="exportStoreData()"><i class="fa-solid fa-file-export"></i> Export All</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-layout">
+    
+    <!-- Left Column: URL Input & Web Extractor -->
+    <section class="importer-card">
+      <div class="card-head">
+        <h2><i class="fa-solid fa-link"></i> Paste Product URL</h2>
+        <span class="tag-live">Auto-Extractor Active</span>
+      </div>
+      <p class="section-desc">Paste any product link from supplier or competitor websites (Amazon, AliExpress, Daraz, eBay, Shopify stores, etc.).</p>
+
+      <div class="url-input-wrapper">
+        <div class="input-icon"><i class="fa-solid fa-globe"></i></div>
+        <input type="url" id="productUrlInput" placeholder="https://www.example.com/product/luxury-eyewear-frame..." autofocus>
+        <button class="btn btn-fetch" id="fetchBtn" onclick="fetchProductData()">
+          <span id="btnText"><i class="fa-solid fa-wand-magic-sparkles"></i> Extract Product</span>
+          <span id="btnSpinner" class="spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin"></i> Extracting...</span>
+        </button>
+      </div>
+
+      <!-- Quick Demo Samples for Testing -->
+      <div class="demo-links-bar">
+        <span>Try demo links:</span>
+        <button type="button" class="demo-chip" onclick="loadDemoProduct('glasses')">👓 Designer Glasses</button>
+        <button type="button" class="demo-chip" onclick="loadDemoProduct('watch')">⌚ Smart Watch</button>
+        <button type="button" class="demo-chip" onclick="loadDemoProduct('earbuds')">🎧 Wireless Earbuds</button>
+      </div>
+
+      <!-- Product Edit Form (Appears once fetched) -->
+      <div id="editorContainer" class="editor-container" style="display: none;">
+        
+        <div class="editor-header">
+          <h3><i class="fa-solid fa-pen-to-square"></i> Review & Edit Product Details</h3>
+          <span class="status-ready"><i class="fa-solid fa-check"></i> Scraped Successfully</span>
+        </div>
+
+        <!-- Price & Margin Decider Box -->
+        <div class="pricing-strategy-card">
+          <div class="pricing-head">
+            <h4><i class="fa-solid fa-coins"></i> Your Pricing Decision</h4>
+            <span class="currency-tag">PKR / USD Ready</span>
+          </div>
+          <div class="pricing-grid">
+            <div class="form-group">
+              <label>Original Source Price (Auto-detected)</label>
+              <input type="text" id="originalPrice" placeholder="e.g. 3,500" readonly>
+            </div>
+            <div class="form-group highlight-group">
+              <label><i class="fa-solid fa-tag"></i> Your Selling Price *</label>
+              <input type="number" id="sellingPrice" placeholder="e.g. 5450" oninput="calculateMargin()">
+            </div>
+            <div class="form-group">
+              <label>Compare-at / Strike-through Price (Optional)</label>
+              <input type="number" id="comparePrice" placeholder="e.g. 7000">
+            </div>
+            <div class="form-group">
+              <label>Estimated Profit / Margin</label>
+              <div class="margin-display" id="marginDisplay">Set selling price</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Title & Category -->
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label>Product Title *</label>
+            <input type="text" id="productTitle">
+          </div>
+          <div class="form-group flex-1">
+            <label>Category / Collection</label>
+            <input type="text" id="productCategory" placeholder="e.g. Eyewear, Electronics">
+          </div>
+          <div class="form-group flex-1">
+            <label>SKU / Barcode</label>
+            <input type="text" id="productSku" placeholder="e.g. PRD-8942">
+          </div>
+        </div>
+
+        <!-- Photos Extracted Grid -->
+        <div class="photos-section">
+          <div class="photos-head">
+            <label><i class="fa-solid fa-images"></i> Product Photos Extracted (<span id="photoCount">0</span>)</label>
+            <button type="button" class="btn-text-action" onclick="addNewImageSlot()"><i class="fa-solid fa-plus"></i> Add Image URL</button>
+          </div>
+          <p class="field-hint">Select the primary thumbnail and delete any unwanted supplier watermarks.</p>
+          <div class="image-gallery-grid" id="imageGallery">
+            <!-- Dynamic Images with thumbnail selection and delete -->
+          </div>
+        </div>
+
+        <!-- Description Editor with Rich Tools -->
+        <div class="form-group">
+          <div class="desc-head">
+            <label><i class="fa-solid fa-align-left"></i> Product Description *</label>
+            <div class="desc-tools">
+              <button type="button" class="tool-btn" onclick="formatDesc('bullet')"><i class="fa-solid fa-list-ul"></i> Clean Bullet Points</button>
+              <button type="button" class="tool-btn" onclick="formatDesc('highlight')"><i class="fa-solid fa-sparkles"></i> Add Key Highlights</button>
+              <button type="button" class="tool-btn" onclick="formatDesc('clear')"><i class="fa-solid fa-eraser"></i> Clear</button>
+            </div>
+          </div>
+          <textarea id="productDescription" rows="7" placeholder="Detailed product specifications, materials, warranty, package contents..."></textarea>
+        </div>
+
+        <!-- Final Action Bar -->
+        <div class="action-footer">
+          <button type="button" class="btn btn-secondary" onclick="resetEditor()"><i class="fa-solid fa-rotate-left"></i> Discard</button>
+          <button type="button" class="btn btn-publish" onclick="publishProductToStore()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload / Save to My Store Catalog</button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- Right Column: Live Store Catalog Preview & Sync -->
+    <aside class="catalog-panel">
+      <div class="catalog-head">
+        <div>
+          <h3><i class="fa-solid fa-store"></i> Your Uploaded Products</h3>
+          <span class="subtext">Ready for your e-commerce store catalog</span>
+        </div>
+        <button class="btn btn-clean-sm" onclick="clearCatalog()"><i class="fa-solid fa-trash-can"></i> Clear</button>
+      </div>
+
+      <!-- Live Catalog List -->
+      <div class="catalog-list" id="catalogList">
+        <div class="empty-state" id="emptyState">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <h4>No products uploaded yet</h4>
+          <p>Paste a product link on the left to extract photos, description, and list your first product in seconds.</p>
+        </div>
+      </div>
+
+      <!-- Export Formats -->
+      <div class="export-tray">
+        <h4>Export & Webhook Integration</h4>
+        <div class="tray-buttons">
+          <button class="btn btn-export-opt" onclick="exportAs('shopify')"><i class="fa-brands fa-shopify"></i> Shopify CSV</button>
+          <button class="btn btn-export-opt" onclick="exportAs('woocommerce')"><i class="fa-brands fa-wordpress"></i> WooCommerce CSV</button>
+          <button class="btn btn-export-opt" onclick="exportAs('json')"><i class="fa-solid fa-code"></i> JSON Data</button>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
