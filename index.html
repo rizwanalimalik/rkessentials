@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QuickList Pro | 1-Click E-Commerce Product Importer & Lister</title>
+  <title>QuickList Pro | 1-Click WooCommerce Product Lister</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -19,82 +19,114 @@
         <div class="logo-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
         <div>
           <h1>QuickList Pro</h1>
-          <span>1-Click Product URL Importer & Publisher</span>
+          <span>1-Click WooCommerce Product Lister</span>
         </div>
       </div>
 
       <div class="store-platform-badge">
-        <span class="platform-label">Target Store:</span>
-        <select id="exportPlatformSelect">
-          <option value="WooCommerce (WordPress)" selected>WooCommerce (WordPress)</option>
-          <option value="Shopify (CSV / API)">Shopify (CSV / API)</option>
-          <option value="Custom Store API / Webhook">Custom Store API / Webhook</option>
-        </select>
+        <span class="platform-label"><i class="fa-brands fa-wordpress"></i> Store Platform:</span>
+        <strong style="color: #38bdf8;">WooCommerce (WordPress)</strong>
       </div>
 
       <div class="header-stats">
-        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Products Ready</span>
-        <button class="btn btn-primary-sm" onclick="exportStoreData()"><i class="fa-solid fa-file-export"></i> Export All</button>
+        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Products in Catalog</span>
+        <button class="btn btn-primary-sm" onclick="exportAs('woocommerce')"><i class="fa-solid fa-file-arrow-down"></i> Export WooCommerce CSV</button>
       </div>
     </div>
   </header>
 
   <main class="main-layout">
     
-    <!-- Left Column: URL Input & Web Extractor -->
+    <!-- Left Column: Input Modes (1-Click Extract OR Paste Page Info) -->
     <section class="importer-card">
-      <div class="card-head">
-        <h2><i class="fa-solid fa-link"></i> Paste Product URL</h2>
-        <span class="tag-live">Auto-Extractor Active</span>
-      </div>
-      <p class="section-desc">Paste any product link from supplier or competitor websites (Amazon, AliExpress, Daraz, eBay, Shopify stores, etc.).</p>
-
-      <div class="url-input-wrapper">
-        <div class="input-icon"><i class="fa-solid fa-globe"></i></div>
-        <input type="url" id="productUrlInput" placeholder="https://www.example.com/product/luxury-eyewear-frame..." autofocus>
-        <button class="btn btn-fetch" id="fetchBtn" onclick="fetchProductData()">
-          <span id="btnText"><i class="fa-solid fa-wand-magic-sparkles"></i> Extract Product</span>
-          <span id="btnSpinner" class="spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin"></i> Extracting...</span>
+      
+      <div class="tabs-header">
+        <button type="button" class="tab-btn active" id="tabAuto" onclick="switchInputMode('auto')">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Mode 1: Auto Extract by Link
+        </button>
+        <button type="button" class="tab-btn" id="tabFast" onclick="switchInputMode('fast')">
+          <i class="fa-solid fa-copy"></i> Mode 2: Quick Copy-Paste (Works on ANY site 100%)
         </button>
       </div>
 
-      <!-- Quick Demo Samples for Testing -->
-      <div class="demo-links-bar">
-        <span>Try demo links:</span>
-        <button type="button" class="demo-chip" onclick="loadDemoProduct('glasses')">👓 Designer Glasses</button>
-        <button type="button" class="demo-chip" onclick="loadDemoProduct('watch')">⌚ Smart Watch</button>
-        <button type="button" class="demo-chip" onclick="loadDemoProduct('earbuds')">🎧 Wireless Earbuds</button>
+      <!-- MODE 1: URL Auto Extractor -->
+      <div id="modeAutoContent">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-link"></i> Paste Product URL</h2>
+          <span class="tag-live">Direct Web Scraper</span>
+        </div>
+        <p class="section-desc">Paste any product link below. The scraper will extract the product name, pricing, photos, and specs automatically.</p>
+
+        <div class="url-input-wrapper">
+          <div class="input-icon"><i class="fa-solid fa-globe"></i></div>
+          <input type="url" id="productUrlInput" placeholder="Paste link here: https://example.com/product/..." autofocus>
+          <button class="btn btn-fetch" id="fetchBtn" onclick="fetchProductData()">
+            <span id="btnText"><i class="fa-solid fa-bolt"></i> Extract Now</span>
+            <span id="btnSpinner" class="spinner" style="display: none;"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</span>
+          </button>
+        </div>
+
+        <div id="scrapeStatusBox" class="scrape-status" style="display: none;"></div>
       </div>
 
-      <!-- Product Edit Form (Appears once fetched) -->
+      <!-- MODE 2: Fail-Safe Instant Copy-Paste (Works on 100% of websites including Daraz, Amazon, Taobao) -->
+      <div id="modeFastContent" style="display: none;">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-bolt"></i> Instant 10-Second Importer</h2>
+          <span class="tag-fail-safe"><i class="fa-solid fa-shield-check"></i> 100% Guaranteed</span>
+        </div>
+        <p class="section-desc">If a marketplace blocks automated robot scrapers (like Daraz/Amazon), simply copy the product text from that page and paste it below. It will automatically structure everything into title, price, photos, and description!</p>
+
+        <div class="form-group">
+          <label>Paste Any Text / Product Title / Description from the supplier page:</label>
+          <textarea id="rawPasteInput" rows="5" placeholder="Example:
+Product Name: Men's Casual Leather Shoes
+Price: 3500
+Description: Made of genuine leather, breathable sole, non-slip rubber..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label>Image Link(s) (Right-click image on supplier site > Copy Image Address):</label>
+            <input type="text" id="rawImageInput" placeholder="https://...jpg (or comma separated links)">
+          </div>
+          <div class="form-group flex-1" style="justify-content: flex-end;">
+            <button type="button" class="btn btn-fetch btn-block" onclick="parseRawPastedProduct()">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Format Product
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Edit Form (Appears once fetched or parsed) -->
       <div id="editorContainer" class="editor-container" style="display: none;">
         
         <div class="editor-header">
-          <h3><i class="fa-solid fa-pen-to-square"></i> Review & Edit Product Details</h3>
-          <span class="status-ready"><i class="fa-solid fa-check"></i> Scraped Successfully</span>
+          <h3><i class="fa-solid fa-pen-to-square"></i> Review & Set Your Price</h3>
+          <span class="status-ready"><i class="fa-solid fa-check"></i> Ready for WooCommerce</span>
         </div>
 
-        <!-- Price & Margin Decider Box -->
+        <!-- Pricing Decider Box -->
         <div class="pricing-strategy-card">
           <div class="pricing-head">
-            <h4><i class="fa-solid fa-coins"></i> Your Pricing Decision</h4>
-            <span class="currency-tag">PKR / USD Ready</span>
+            <h4><i class="fa-solid fa-coins"></i> Your WooCommerce Pricing Decision</h4>
+            <span class="currency-tag">PKR / USD</span>
           </div>
           <div class="pricing-grid">
             <div class="form-group">
-              <label>Original Source Price (Auto-detected)</label>
-              <input type="text" id="originalPrice" placeholder="e.g. 3,500" readonly>
+              <label>Source / Cost Price</label>
+              <input type="text" id="originalPrice" placeholder="e.g. 3500">
             </div>
             <div class="form-group highlight-group">
-              <label><i class="fa-solid fa-tag"></i> Your Selling Price *</label>
-              <input type="number" id="sellingPrice" placeholder="e.g. 5450" oninput="calculateMargin()">
+              <label><i class="fa-solid fa-tag"></i> Your Selling Price (WooCommerce) *</label>
+              <input type="number" id="sellingPrice" placeholder="e.g. 5450" oninput="calculateMargin()" required>
             </div>
             <div class="form-group">
-              <label>Compare-at / Strike-through Price (Optional)</label>
+              <label>Sale / Strike-through Price (Regular Price)</label>
               <input type="number" id="comparePrice" placeholder="e.g. 7000">
             </div>
             <div class="form-group">
-              <label>Estimated Profit / Margin</label>
+              <label>Profit Margin</label>
               <div class="margin-display" id="marginDisplay">Set selling price</div>
             </div>
           </div>
@@ -104,47 +136,45 @@
         <div class="form-row">
           <div class="form-group flex-2">
             <label>Product Title *</label>
-            <input type="text" id="productTitle">
+            <input type="text" id="productTitle" required>
           </div>
           <div class="form-group flex-1">
-            <label>Category / Collection</label>
-            <input type="text" id="productCategory" placeholder="e.g. Eyewear, Electronics">
+            <label>Category (WooCommerce)</label>
+            <input type="text" id="productCategory" placeholder="e.g. Shoes, Accessories">
           </div>
           <div class="form-group flex-1">
-            <label>SKU / Barcode</label>
+            <label>SKU / Product Code</label>
             <input type="text" id="productSku" placeholder="e.g. PRD-8942">
           </div>
         </div>
 
-        <!-- Photos Extracted Grid -->
+        <!-- Photos Section -->
         <div class="photos-section">
           <div class="photos-head">
-            <label><i class="fa-solid fa-images"></i> Product Photos Extracted (<span id="photoCount">0</span>)</label>
+            <label><i class="fa-solid fa-images"></i> Product Photos (<span id="photoCount">0</span>)</label>
             <button type="button" class="btn-text-action" onclick="addNewImageSlot()"><i class="fa-solid fa-plus"></i> Add Image URL</button>
           </div>
-          <p class="field-hint">Select the primary thumbnail and delete any unwanted supplier watermarks.</p>
-          <div class="image-gallery-grid" id="imageGallery">
-            <!-- Dynamic Images with thumbnail selection and delete -->
-          </div>
+          <p class="field-hint">Click the star to choose your main WooCommerce featured image.</p>
+          <div class="image-gallery-grid" id="imageGallery"></div>
         </div>
 
         <!-- Description Editor with Rich Tools -->
         <div class="form-group">
           <div class="desc-head">
-            <label><i class="fa-solid fa-align-left"></i> Product Description *</label>
+            <label><i class="fa-solid fa-align-left"></i> Product Description (Formatted for WooCommerce)</label>
             <div class="desc-tools">
-              <button type="button" class="tool-btn" onclick="formatDesc('bullet')"><i class="fa-solid fa-list-ul"></i> Clean Bullet Points</button>
-              <button type="button" class="tool-btn" onclick="formatDesc('highlight')"><i class="fa-solid fa-sparkles"></i> Add Key Highlights</button>
+              <button type="button" class="tool-btn" onclick="formatDesc('bullet')"><i class="fa-solid fa-list-ul"></i> Bullet Points</button>
+              <button type="button" class="tool-btn" onclick="formatDesc('highlight')"><i class="fa-solid fa-sparkles"></i> Highlights</button>
               <button type="button" class="tool-btn" onclick="formatDesc('clear')"><i class="fa-solid fa-eraser"></i> Clear</button>
             </div>
           </div>
-          <textarea id="productDescription" rows="7" placeholder="Detailed product specifications, materials, warranty, package contents..."></textarea>
+          <textarea id="productDescription" rows="6" placeholder="Detailed product specifications, materials, warranty, package contents..."></textarea>
         </div>
 
         <!-- Final Action Bar -->
         <div class="action-footer">
           <button type="button" class="btn btn-secondary" onclick="resetEditor()"><i class="fa-solid fa-rotate-left"></i> Discard</button>
-          <button type="button" class="btn btn-publish" onclick="publishProductToStore()"><i class="fa-solid fa-cloud-arrow-up"></i> Upload / Save to My Store Catalog</button>
+          <button type="button" class="btn btn-publish" onclick="publishProductToStore()"><i class="fa-solid fa-cloud-arrow-up"></i> Save to WooCommerce Queue</button>
         </div>
 
       </div>
@@ -155,8 +185,8 @@
     <aside class="catalog-panel">
       <div class="catalog-head">
         <div>
-          <h3><i class="fa-solid fa-store"></i> Your Uploaded Products</h3>
-          <span class="subtext">Ready for your e-commerce store catalog</span>
+          <h3><i class="fa-solid fa-store"></i> Products Ready to Upload</h3>
+          <span class="subtext">Export directly to your WooCommerce WordPress store</span>
         </div>
         <button class="btn btn-clean-sm" onclick="clearCatalog()"><i class="fa-solid fa-trash-can"></i> Clear</button>
       </div>
@@ -164,24 +194,23 @@
       <!-- Live Catalog List -->
       <div class="catalog-list" id="catalogList">
         <div class="empty-state" id="emptyState">
-          <i class="fa-solid fa-cart-shopping"></i>
-          <h4>No products uploaded yet</h4>
-          <p>Paste a product link on the left to extract photos, description, and list your first product in seconds.</p>
+          <i class="fa-brands fa-wordpress"></i>
+          <h4>No products in queue</h4>
+          <p>Extract or paste any product on the left to set your price and export to WooCommerce.</p>
         </div>
       </div>
 
       <!-- Export Formats & 1-Click WooCommerce Sync -->
       <div class="export-tray">
-        <h4><i class="fa-brands fa-wordpress"></i> WooCommerce Publishing</h4>
+        <h4><i class="fa-brands fa-wordpress"></i> 1-Click WooCommerce Export</h4>
         <div class="woo-direct-box">
-          <p class="woo-hint"><i class="fa-solid fa-circle-check"></i> Standard WooCommerce CSV Ready</p>
+          <p class="woo-hint"><i class="fa-solid fa-circle-check"></i> Standard WooCommerce CSV format</p>
           <button class="btn btn-woo-primary btn-block" onclick="exportAs('woocommerce')">
             <i class="fa-solid fa-file-arrow-down"></i> Download WooCommerce Import CSV
           </button>
         </div>
-        <div class="tray-buttons" style="margin-top: 10px;">
-          <button class="btn btn-export-opt" onclick="exportAs('shopify')"><i class="fa-brands fa-shopify"></i> Shopify</button>
-          <button class="btn btn-export-opt" onclick="exportAs('json')"><i class="fa-solid fa-code"></i> JSON</button>
+        <div class="how-to-import">
+          <small><i class="fa-solid fa-circle-info"></i> In WordPress: Go to <strong>Products > Import</strong> and upload this CSV!</small>
         </div>
       </div>
     </aside>

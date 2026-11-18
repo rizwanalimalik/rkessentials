@@ -4,7 +4,6 @@ let savedProducts = [];
 
 const LOCAL_STORAGE_KEY = 'quicklist_products_catalog';
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (cached) {
@@ -17,115 +16,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Demo Data Samples
-const DEMO_PRODUCTS = {
-  glasses: {
-    url: "https://www.example.com/products/titanium-aviator-sunglasses",
-    title: "Luxury Titanium Polarized Aviator Eyewear",
-    originalPrice: "8500",
-    sellingPrice: "6850",
-    comparePrice: "9500",
-    category: "Eyewear & Sunglasses",
-    sku: "EYE-TITAN-001",
-    images: [
-      "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80"
-    ],
-    description: `• Premium Hypoallergenic Titanium alloy construction.\n• High-Definition UV400 Polarized lenses.\n• Ergonomic flex spring hinges for all-day comfort.`
-  },
-  watch: {
-    url: "https://www.example.com/products/ultra-amoled-smartwatch",
-    title: "Ultra Titanium AMOLED Smartwatch with Heart & SpO2 Monitor",
-    originalPrice: "14000",
-    sellingPrice: "11950",
-    comparePrice: "16500",
-    category: "Smart Electronics",
-    sku: "WCH-ULTRA-02",
-    images: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=600&q=80"
-    ],
-    description: `• 2.04" Always-On HD AMOLED display.\n• Bluetooth Calling & real-time notification alerts.\n• 24/7 Heart rate, SpO2 blood oxygen & sleep tracking.`
-  },
-  earbuds: {
-    url: "https://www.example.com/products/anc-true-wireless-earbuds",
-    title: "Active Noise Cancelling (ANC) True Wireless Earbuds",
-    originalPrice: "6500",
-    sellingPrice: "4999",
-    comparePrice: "7500",
-    category: "Audio & Accessories",
-    sku: "AUD-ANC-99",
-    images: [
-      "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?auto=format&fit=crop&w=600&q=80"
-    ],
-    description: `• Hybrid Active Noise Cancellation.\n• High-fidelity 10mm dynamic bass drivers.\n• 36-hour total playtime with USB-C quick charge.`
-  }
-};
+function switchInputMode(mode) {
+  const tabAuto = document.getElementById('tabAuto');
+  const tabFast = document.getElementById('tabFast');
+  const autoContent = document.getElementById('modeAutoContent');
+  const fastContent = document.getElementById('modeFastContent');
 
-function loadDemoProduct(type) {
-  const prod = DEMO_PRODUCTS[type];
-  if (!prod) return;
-  document.getElementById('productUrlInput').value = prod.url;
-  populateEditor(prod);
-  showToast(`Loaded ${prod.title.substring(0, 30)}...`);
+  if (mode === 'auto') {
+    tabAuto.classList.add('active');
+    tabFast.classList.remove('active');
+    autoContent.style.display = 'block';
+    fastContent.style.display = 'none';
+  } else {
+    tabFast.classList.add('active');
+    tabAuto.classList.remove('active');
+    fastContent.style.display = 'block';
+    autoContent.style.display = 'none';
+  }
 }
 
-// Multi-Proxy Scraper List (To guarantee reliable HTML extraction from external sites)
-const PROXIES = [
-  (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
-];
-
-async function fetchHtmlWithFallback(targetUrl) {
-  let lastError = null;
-
-  // Try Proxy 1 (AllOrigins JSON format)
-  try {
-    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.contents && data.contents.length > 100) {
-        return data.contents;
-      }
-    }
-  } catch (e) {
-    lastError = e;
-  }
-
-  // Try Proxy 2 (corsproxy.io direct HTML)
-  try {
-    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const html = await res.text();
-      if (html && html.length > 100) return html;
-    }
-  } catch (e) {
-    lastError = e;
-  }
-
-  // Try Proxy 3 (codetabs)
-  try {
-    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const html = await res.text();
-      if (html && html.length > 100) return html;
-    }
-  } catch (e) {
-    lastError = e;
-  }
-
-  throw lastError || new Error("Unable to bypass cross-origin security for this target link");
-}
-
-// Main 1-Click Fetch Handler
+// Multi-engine web scraper
 async function fetchProductData() {
   const urlInput = document.getElementById('productUrlInput');
   const url = urlInput.value.trim();
+  const statusBox = document.getElementById('scrapeStatusBox');
 
   if (!url) {
-    alert("Please enter or paste a valid product link first!");
+    alert("Please enter or paste a valid product link!");
     urlInput.focus();
     return;
   }
@@ -137,18 +54,26 @@ async function fetchProductData() {
   btn.disabled = true;
   btnText.style.display = 'none';
   btnSpinner.style.display = 'inline-block';
+  statusBox.style.display = 'block';
+  statusBox.className = 'scrape-status info';
+  statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Contacting website server and extracting product media...';
 
   try {
-    const htmlText = await fetchHtmlWithFallback(url);
-    const parsedData = parseProductHtml(htmlText, url);
+    const htmlText = await fetchHtmlThroughProxies(url);
+    const parsedData = parseHtmlContent(htmlText, url);
+
+    statusBox.className = 'scrape-status success';
+    statusBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> Scraped successfully! Review details and decide your selling price.';
     populateEditor(parsedData);
-    showToast("✓ Product photos, title & details extracted from your link!");
+    showToast("Product extracted! Set your price.");
   } catch (err) {
-    console.warn("Live scraping encountered block. Falling back to URL pattern parser:", err);
-    // Parse directly from URL slug + allow user instant manual image pasting if site blocks all public proxies (e.g. Cloudflare / Daraz anti-bot)
-    const urlData = parseDataFromUrlPattern(url);
+    console.warn("Proxy scraping error:", err);
+    // Parse from URL structure directly
+    const urlData = parseDirectlyFromUrl(url);
+    statusBox.className = 'scrape-status warning';
+    statusBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> This site blocks external scraper robots. We auto-extracted the title from the link. If photos are missing, you can add image links directly below or switch to <strong>Mode 2</strong>.';
     populateEditor(urlData);
-    showToast("Extracted title from link. Set your price and review details!");
+    showToast("Title extracted. Review and set your price.");
   } finally {
     btn.disabled = false;
     btnText.style.display = 'inline-block';
@@ -156,12 +81,42 @@ async function fetchProductData() {
   }
 }
 
-// Parser for HTML content
-function parseProductHtml(htmlText, targetUrl) {
+async function fetchHtmlThroughProxies(targetUrl) {
+  // Proxy 1: CodeTabs
+  try {
+    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
+    if (res.ok) {
+      const html = await res.text();
+      if (html && html.length > 300) return html;
+    }
+  } catch (e) {}
+
+  // Proxy 2: AllOrigins
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.contents && data.contents.length > 300) return data.contents;
+    }
+  } catch (e) {}
+
+  // Proxy 3: Corsproxy
+  try {
+    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`);
+    if (res.ok) {
+      const html = await res.text();
+      if (html && html.length > 300) return html;
+    }
+  } catch (e) {}
+
+  throw new Error("Target site blocked public proxy scrapers.");
+}
+
+function parseHtmlContent(htmlText, targetUrl) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlText, 'text/html');
 
-  // 1. Title Extraction
+  // Title
   let title = 
     doc.querySelector('meta[property="og:title"]')?.content ||
     doc.querySelector('meta[name="twitter:title"]')?.content ||
@@ -169,82 +124,69 @@ function parseProductHtml(htmlText, targetUrl) {
     doc.title?.trim() ||
     "";
 
-  // Clean trailing branding
   if (title) {
-    title = title.split('|')[0].split(' - ')[0].trim();
+    title = title.split('|')[0].split(' - ')[0].split(' : ')[0].trim();
   } else {
     title = parseSlugFromUrl(targetUrl);
   }
 
-  // 2. Description Extraction
-  let description =
+  // Description
+  let desc = 
     doc.querySelector('meta[property="og:description"]')?.content ||
     doc.querySelector('meta[name="description"]')?.content ||
     doc.querySelector('#productDescription')?.innerText?.trim() ||
     doc.querySelector('.product-description')?.innerText?.trim() ||
     "";
 
-  // 3. Images Extraction
+  // Images
   let images = [];
-  
-  // High quality meta og:image
   const ogImg = doc.querySelector('meta[property="og:image"]')?.content;
-  if (ogImg && isValidImageUrl(ogImg)) images.push(resolveUrl(ogImg, targetUrl));
+  if (ogImg && isUsableImage(ogImg)) images.push(cleanUrl(ogImg, targetUrl));
 
-  const twitterImg = doc.querySelector('meta[name="twitter:image"]')?.content;
-  if (twitterImg && isValidImageUrl(twitterImg) && !images.includes(twitterImg)) {
-    images.push(resolveUrl(twitterImg, targetUrl));
-  }
-
-  // Scan img tags for actual product images
-  const imgElements = doc.querySelectorAll('img');
-  imgElements.forEach(img => {
-    let src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-lazy') || img.getAttribute('data-zoom-image');
-    if (src && isValidImageUrl(src)) {
-      src = resolveUrl(src, targetUrl);
-      if (!images.includes(src)) {
-        images.push(src);
-      }
+  doc.querySelectorAll('img').forEach(img => {
+    let src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-zoom-image');
+    if (src && isUsableImage(src)) {
+      src = cleanUrl(src, targetUrl);
+      if (!images.includes(src)) images.push(src);
     }
   });
 
-  // Keep top 6 images
   images = images.slice(0, 6);
 
-  // 4. Price Detection
+  // Price
   let rawPrice = 
     doc.querySelector('meta[property="product:price:amount"]')?.content ||
-    doc.querySelector('.price, .product-price, .pdp-price, [data-price]')?.innerText?.replace(/[^0-9.]/g, '') ||
+    doc.querySelector('.price, .product-price, .pdp-price')?.innerText?.replace(/[^0-9.]/g, '') ||
     "";
 
   return {
     url: targetUrl,
     title: title || "Imported Product",
-    description: description || "• Premium quality material and durable craftsmanship.\n• 100% authentic with manufacturer warranty.\n• Fast nationwide delivery with secure packaging.",
+    description: desc || "• Premium build quality and durable materials.\n• Packaged securely for delivery.\n• Full customer warranty included.",
     originalPrice: parseFloat(rawPrice) ? Math.round(parseFloat(rawPrice)).toString() : "",
     sellingPrice: "",
     comparePrice: "",
-    category: detectCategoryFromText(title + " " + targetUrl),
+    category: detectCategory(title + " " + targetUrl),
     sku: `SKU-${Date.now().toString().slice(-5)}`,
     images: images
   };
 }
 
-function isValidImageUrl(src) {
+function isUsableImage(src) {
   if (!src) return false;
   const s = src.toLowerCase();
-  const badWords = ['logo', 'icon', 'banner', 'avatar', 'payment', 'sprite', 'star', 'badge', 'loader'];
-  for (let w of badWords) {
-    if (s.includes(w)) return false;
+  const filter = ['logo', 'icon', 'badge', 'payment', 'loader', 'sprite', 'avatar'];
+  for (let f of filter) {
+    if (s.includes(f)) return false;
   }
   return true;
 }
 
-function resolveUrl(src, baseUrl) {
+function cleanUrl(src, base) {
   if (src.startsWith('//')) return 'https:' + src;
   if (src.startsWith('/')) {
     try {
-      const u = new URL(baseUrl);
+      const u = new URL(base);
       return `${u.origin}${src}`;
     } catch (e) {
       return src;
@@ -265,32 +207,78 @@ function parseSlugFromUrl(url) {
   return "Imported Product";
 }
 
-function detectCategoryFromText(text) {
+function detectCategory(text) {
   const t = text.toLowerCase();
-  if (t.includes('shoe') || t.includes('sneaker') || t.includes('boot')) return "Footwear";
-  if (t.includes('shirt') || t.includes('dress') || t.includes('jacket') || t.includes('pant') || t.includes('cloth')) return "Apparel & Fashion";
-  if (t.includes('phone') || t.includes('watch') || t.includes('headphone') || t.includes('earbud') || t.includes('laptop') || t.includes('cable')) return "Electronics & Gadgets";
-  if (t.includes('glass') || t.includes('frame') || t.includes('optic') || t.includes('lens')) return "Eyewear";
-  if (t.includes('bag') || t.includes('wallet') || t.includes('purse')) return "Bags & Accessories";
-  if (t.includes('cream') || t.includes('perfume') || t.includes('serum') || t.includes('makeup')) return "Beauty & Cosmetics";
+  if (t.includes('shoe') || t.includes('sneaker')) return "Footwear";
+  if (t.includes('shirt') || t.includes('dress') || t.includes('jacket') || t.includes('hoodie')) return "Apparel";
+  if (t.includes('phone') || t.includes('watch') || t.includes('earbud') || t.includes('headphone') || t.includes('charger')) return "Electronics";
+  if (t.includes('glass') || t.includes('frame') || t.includes('optic')) return "Eyewear";
+  if (t.includes('bag') || t.includes('wallet')) return "Bags & Wallets";
+  if (t.includes('beauty') || t.includes('perfume') || t.includes('cream')) return "Cosmetics";
   return "General";
 }
 
-function parseDataFromUrlPattern(url) {
+function parseDirectlyFromUrl(url) {
   const title = parseSlugFromUrl(url);
-  const cat = detectCategoryFromText(url);
-
   return {
     url,
     title,
-    description: `• High-grade build quality and reliable performance.\n• Tested for durability and everyday use.\n• Complete packaging with user manual & accessories included.\n• 7-day replacement warranty.`,
+    description: "• High quality construction & materials.\n• Designed for comfort and everyday use.\n• Complete packaging with warranty.",
     originalPrice: "",
     sellingPrice: "",
     comparePrice: "",
-    category: cat,
+    category: detectCategory(title + " " + url),
     sku: `SKU-${Date.now().toString().slice(-5)}`,
-    images: [] // Empty so it prompts user to paste image if not scraped
+    images: []
   };
+}
+
+// MODE 2: Instant Parse from Pasted Text / Images
+function parseRawPastedProduct() {
+  const rawText = document.getElementById('rawPasteInput').value.trim();
+  const rawImages = document.getElementById('rawImageInput').value.trim();
+
+  if (!rawText && !rawImages) {
+    alert("Please paste the product text or image link in the boxes above!");
+    return;
+  }
+
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  let title = lines[0] || "Imported Product";
+  title = title.replace(/^(product name|title|name)[\s:]+/i, '');
+
+  let price = "";
+  let descLines = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const priceMatch = line.match(/(?:price|rs|pkr|\$)\s*[:=]?\s*([0-9,.]+)/i);
+    if (priceMatch && !price) {
+      price = priceMatch[1].replace(/,/g, '');
+    } else {
+      descLines.push(line);
+    }
+  }
+
+  let images = [];
+  if (rawImages) {
+    images = rawImages.split(',').map(s => s.trim()).filter(s => s.startsWith('http') || s.startsWith('data:'));
+  }
+
+  const data = {
+    url: "Pasted Product",
+    title,
+    description: descLines.length > 0 ? descLines.join('\n') : "• Authentic high quality product.\n• Fast nationwide delivery.\n• Customer satisfaction guaranteed.",
+    originalPrice: price || "",
+    sellingPrice: price ? Math.round(parseFloat(price) * 1.25).toString() : "",
+    comparePrice: "",
+    category: detectCategory(title),
+    sku: `SKU-${Date.now().toString().slice(-5)}`,
+    images
+  };
+
+  populateEditor(data);
+  showToast("✓ Product formatted into editor! Set your price.");
 }
 
 // Populate Editor Fields
@@ -303,10 +291,10 @@ function populateEditor(data) {
   document.getElementById('productDescription').value = data.description || '';
   
   if (data.originalPrice) {
-    document.getElementById('originalPrice').value = `PKR ${data.originalPrice}`;
-    document.getElementById('sellingPrice').value = Math.round(parseFloat(data.originalPrice) * 1.35);
+    document.getElementById('originalPrice').value = data.originalPrice;
+    document.getElementById('sellingPrice').value = data.sellingPrice || Math.round(parseFloat(data.originalPrice) * 1.3);
   } else {
-    document.getElementById('originalPrice').value = 'Not detected';
+    document.getElementById('originalPrice').value = '';
     document.getElementById('sellingPrice').value = '';
   }
 
@@ -328,9 +316,9 @@ function renderExtractedImages() {
 
   if (currentExtractedImages.length === 0) {
     container.innerHTML = `
-      <div style="grid-column: span 4; padding: 20px; background: #fff; border: 2px dashed #cbd5e1; border-radius: 8px; text-align: center;">
-        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;"><i class="fa-solid fa-image"></i> No direct photos were exposed by this website's security.</p>
-        <button type="button" class="btn btn-primary-sm" onclick="addNewImageSlot()"><i class="fa-solid fa-plus"></i> Paste Photo Link or Image URL</button>
+      <div style="grid-column: span 4; padding: 18px; background: #fff; border: 2px dashed #cbd5e1; border-radius: 8px; text-align: center;">
+        <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 8px;">No photos attached yet.</p>
+        <button type="button" class="btn btn-primary-sm" onclick="addNewImageSlot()"><i class="fa-solid fa-plus"></i> Add Photo Link (Right click image > Copy image address)</button>
       </div>
     `;
     return;
@@ -342,10 +330,10 @@ function renderExtractedImages() {
     card.innerHTML = `
       <img src="${imgUrl}" alt="Product Photo ${idx + 1}" onerror="this.src='https://via.placeholder.com/150?text=Image+Load+Error'">
       <div class="thumb-actions">
-        <button type="button" class="thumb-btn" onclick="setPrimaryImage(${idx})" title="Set as Main Thumbnail"><i class="fa-solid fa-star"></i></button>
+        <button type="button" class="thumb-btn" onclick="setPrimaryImage(${idx})" title="Set as Main WooCommerce Image"><i class="fa-solid fa-star"></i></button>
         <button type="button" class="thumb-btn" onclick="removeImage(${idx})" title="Delete image"><i class="fa-solid fa-trash"></i></button>
       </div>
-      ${idx === 0 ? '<span class="primary-badge">Cover</span>' : ''}
+      ${idx === 0 ? '<span class="primary-badge">Featured</span>' : ''}
     `;
     container.appendChild(card);
   });
@@ -355,7 +343,7 @@ function setPrimaryImage(idx) {
   const selected = currentExtractedImages.splice(idx, 1)[0];
   currentExtractedImages.unshift(selected);
   renderExtractedImages();
-  showToast("Main cover photo updated");
+  showToast("Featured image updated!");
 }
 
 function removeImage(idx) {
@@ -364,11 +352,11 @@ function removeImage(idx) {
 }
 
 function addNewImageSlot() {
-  const url = prompt("Paste Product Image URL (right-click on product photo > Copy image address):");
-  if (url && (url.startsWith('http') || url.startsWith('data:image'))) {
+  const url = prompt("Paste Product Image URL (right-click image on supplier site > Copy Image Address):");
+  if (url && (url.startsWith('http') || url.startsWith('data:'))) {
     currentExtractedImages.push(url.trim());
     renderExtractedImages();
-    showToast("Photo added successfully!");
+    showToast("Photo added!");
   }
 }
 
@@ -394,7 +382,6 @@ function calculateMargin() {
   }
 }
 
-// Description formatting
 function formatDesc(action) {
   const descEl = document.getElementById('productDescription');
   if (action === 'bullet') {
@@ -407,7 +394,7 @@ function formatDesc(action) {
   }
 }
 
-// Publish Product to Store Catalog
+// Save Product to Queue
 function publishProductToStore() {
   const title = document.getElementById('productTitle').value.trim();
   const sellingPrice = document.getElementById('sellingPrice').value.trim();
@@ -422,7 +409,7 @@ function publishProductToStore() {
     return;
   }
   if (!sellingPrice) {
-    alert("Please decide and enter your Selling Price!");
+    alert("Please enter your Selling Price!");
     document.getElementById('sellingPrice').focus();
     return;
   }
@@ -431,7 +418,7 @@ function publishProductToStore() {
     id: `PRD-${Date.now()}`,
     title,
     price: sellingPrice,
-    comparePrice: comparePrice || null,
+    comparePrice: comparePrice || '',
     category,
     sku,
     description,
@@ -445,17 +432,19 @@ function publishProductToStore() {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedProducts));
 
   renderCatalog();
-  showToast(`🎉 "${title}" uploaded to your store catalog!`);
+  showToast(`🎉 "${title}" saved to WooCommerce export list!`);
   resetEditor();
 }
 
 function resetEditor() {
   document.getElementById('editorContainer').style.display = 'none';
   document.getElementById('productUrlInput').value = '';
+  document.getElementById('rawPasteInput').value = '';
+  document.getElementById('rawImageInput').value = '';
+  document.getElementById('scrapeStatusBox').style.display = 'none';
   currentExtractedImages = [];
 }
 
-// Render Saved Catalog
 function renderCatalog() {
   const container = document.getElementById('catalogList');
   const emptyState = document.getElementById('emptyState');
@@ -495,59 +484,46 @@ function renderCatalog() {
 }
 
 function deleteProduct(index) {
-  if (confirm("Remove this product from your store catalog?")) {
+  if (confirm("Remove this product from your queue?")) {
     savedProducts.splice(index, 1);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedProducts));
     renderCatalog();
-    showToast("Product removed from catalog");
+    showToast("Product removed.");
   }
 }
 
 function clearCatalog() {
   if (savedProducts.length === 0) return;
-  if (confirm("Clear all products from your catalog?")) {
+  if (confirm("Clear all products from your queue?")) {
     savedProducts = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     renderCatalog();
-    showToast("Catalog cleared");
+    showToast("Queue cleared.");
   }
 }
 
-// Export Catalog Formats (Shopify, WooCommerce, JSON)
+// 1-Click WooCommerce CSV Export
 function exportAs(type) {
   if (savedProducts.length === 0) {
-    alert("No products in catalog to export! Please add a product first.");
+    alert("No products in queue! Please add at least one product first.");
     return;
   }
 
-  if (type === 'json') {
-    downloadFile(JSON.stringify(savedProducts, null, 2), 'products-catalog.json', 'application/json');
-    showToast("Exported catalog as JSON!");
-  } else if (type === 'shopify') {
-    let csv = "Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Variant SKU,Variant Price,Variant Compare At Price,Image Src,Image Position\n";
-    savedProducts.forEach(p => {
-      const handle = p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const descHtml = `"${p.description.replace(/\n/g, '<br>').replace(/"/g, '""')}"`;
-      const titleEsc = `"${p.title.replace(/"/g, '""')}"`;
-      csv += `${handle},${titleEsc},${descHtml},MyStore,${p.category},Imported,TRUE,${p.sku},${p.price},${p.comparePrice || ''},${p.thumbnail || ''},1\n`;
-    });
-    downloadFile(csv, 'shopify-products-import.csv', 'text/csv');
-    showToast("Exported Shopify-ready CSV!");
-  } else if (type === 'woocommerce') {
-    let csv = "Type,SKU,Name,Published,Is featured?,Visibility in catalog,Short description,Description,Regular price,Sale price,Categories,Images\n";
-    savedProducts.forEach(p => {
-      const nameEsc = `"${p.title.replace(/"/g, '""')}"`;
-      const descEsc = `"${p.description.replace(/"/g, '""')}"`;
-      const imgList = p.images.join(', ');
-      csv += `simple,${p.sku},${nameEsc},1,0,visible,,${descEsc},${p.comparePrice || p.price},${p.comparePrice ? p.price : ''},"${p.category}","${imgList}"\n`;
-    });
-    downloadFile(csv, 'woocommerce-products-import.csv', 'text/csv');
-    showToast("Exported WooCommerce-ready CSV!");
-  }
-}
+  // Exact WooCommerce product import headers
+  let csv = "Type,SKU,Name,Published,Is featured?,Visibility in catalog,Short description,Description,Regular price,Sale price,Categories,Images\n";
+  
+  savedProducts.forEach(p => {
+    const nameEsc = `"${p.title.replace(/"/g, '""')}"`;
+    const descEsc = `"${p.description.replace(/\n/g, '<br>').replace(/"/g, '""')}"`;
+    const imgList = p.images.join(', ');
+    const regularPrice = p.comparePrice ? p.comparePrice : p.price;
+    const salePrice = p.comparePrice ? p.price : '';
 
-function exportStoreData() {
-  exportAs('woocommerce');
+    csv += `simple,${p.sku},${nameEsc},1,0,visible,,${descEsc},${regularPrice},${salePrice},"${p.category}","${imgList}"\n`;
+  });
+
+  downloadFile(csv, 'woocommerce-products-import.csv', 'text/csv');
+  showToast("✓ Downloaded WooCommerce-ready CSV! Ready to import.");
 }
 
 function downloadFile(content, fileName, mimeType) {
