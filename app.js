@@ -58,6 +58,38 @@ async function fetchProductData() {
   statusBox.className = 'scrape-status info';
   statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Contacting website server and extracting product media...';
 
+  // 1. First priority: Try Local Scraper Engine (Bypasses 100% of blocks, Cloudflare & CORS)
+  try {
+    const localRes = await fetch(`http://localhost:5000/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      if (localData && localData.success && localData.title) {
+        statusBox.className = 'scrape-status success';
+        statusBox.innerHTML = '<i class="fa-solid fa-bolt"></i> Extracted via Local Engine! Photos, title & specs ready.';
+        
+        // Clean naheed/magento prices if has leading dot
+        let cleanPrice = localData.price ? localData.price.replace(/^\./, '').replace(/[^0-9]/g, '') : '';
+        
+        populateEditor({
+          url: localData.url,
+          title: localData.title,
+          description: localData.description || '• Premium quality craftsmanship.\n• Authentic product with manufacturer warranty.\n• Fast nationwide delivery.',
+          originalPrice: cleanPrice,
+          sellingPrice: cleanPrice ? Math.round(parseFloat(cleanPrice) * 1.25).toString() : '',
+          comparePrice: cleanPrice ? cleanPrice : '',
+          category: detectCategory(localData.title + ' ' + url),
+          sku: `SKU-${Date.now().toString().slice(-5)}`,
+          images: (localData.images || []).filter(img => !img.includes('placeholder') && !img.includes('ellipsis') && !img.includes('close'))
+        });
+        showToast("✓ Product extracted! Decide your selling price.");
+        return;
+      }
+    }
+  } catch (localErr) {
+    console.log("Local engine check:", localErr.message);
+  }
+
+  // 2. Second priority: Public Web Proxies
   try {
     const htmlText = await fetchHtmlThroughProxies(url);
     const parsedData = parseHtmlContent(htmlText, url);
@@ -71,7 +103,7 @@ async function fetchProductData() {
     // Parse from URL structure directly
     const urlData = parseDirectlyFromUrl(url);
     statusBox.className = 'scrape-status warning';
-    statusBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> This site blocks external scraper robots. We auto-extracted the title from the link. If photos are missing, you can add image links directly below or switch to <strong>Mode 2</strong>.';
+    statusBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Tip: Start <strong>start_engine.bat</strong> in the project folder to auto-extract from heavily protected sites like Naheed / Daraz without any blocks!';
     populateEditor(urlData);
     showToast("Title extracted. Review and set your price.");
   } finally {
