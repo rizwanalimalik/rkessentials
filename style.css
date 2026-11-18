@@ -596,8 +596,25 @@ body {
   cursor: pointer;
 }
 
-.btn-clean-sm:hover {
-  color: #e11d48;
+.btn-woo-primary {
+  background: linear-gradient(135deg, #7f54b3, #9b5c8f);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px;
+  font-size: 0.92rem;
+  box-shadow: 0 4px 12px rgba(127, 84, 179, 0.3);
+}
+
+.btn-woo-primary:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.woo-hint {
+  font-size: 0.78rem;
+  color: #7f54b3;
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
 .action-footer {

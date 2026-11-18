@@ -24,12 +24,11 @@
       </div>
 
       <div class="store-platform-badge">
-        <span class="platform-label">Export Destination:</span>
+        <span class="platform-label">Target Store:</span>
         <select id="exportPlatformSelect">
-          <option value="Shopify (CSV / JSON API)">Shopify (CSV / API)</option>
-          <option value="WooCommerce (CSV / REST)">WooCommerce (WordPress)</option>
-          <option value="Custom E-Commerce Store (JSON)">Custom Store API / Webhook</option>
-          <option value="Daraz / Amazon Format">Daraz / Local Marketplace</option>
+          <option value="WooCommerce (WordPress)" selected>WooCommerce (WordPress)</option>
+          <option value="Shopify (CSV / API)">Shopify (CSV / API)</option>
+          <option value="Custom Store API / Webhook">Custom Store API / Webhook</option>
         </select>
       </div>
 
@@ -171,13 +170,18 @@
         </div>
       </div>
 
-      <!-- Export Formats -->
+      <!-- Export Formats & 1-Click WooCommerce Sync -->
       <div class="export-tray">
-        <h4>Export & Webhook Integration</h4>
-        <div class="tray-buttons">
-          <button class="btn btn-export-opt" onclick="exportAs('shopify')"><i class="fa-brands fa-shopify"></i> Shopify CSV</button>
-          <button class="btn btn-export-opt" onclick="exportAs('woocommerce')"><i class="fa-brands fa-wordpress"></i> WooCommerce CSV</button>
-          <button class="btn btn-export-opt" onclick="exportAs('json')"><i class="fa-solid fa-code"></i> JSON Data</button>
+        <h4><i class="fa-brands fa-wordpress"></i> WooCommerce Publishing</h4>
+        <div class="woo-direct-box">
+          <p class="woo-hint"><i class="fa-solid fa-circle-check"></i> Standard WooCommerce CSV Ready</p>
+          <button class="btn btn-woo-primary btn-block" onclick="exportAs('woocommerce')">
+            <i class="fa-solid fa-file-arrow-down"></i> Download WooCommerce Import CSV
+          </button>
+        </div>
+        <div class="tray-buttons" style="margin-top: 10px;">
+          <button class="btn btn-export-opt" onclick="exportAs('shopify')"><i class="fa-brands fa-shopify"></i> Shopify</button>
+          <button class="btn btn-export-opt" onclick="exportAs('json')"><i class="fa-solid fa-code"></i> JSON</button>
         </div>
       </div>
     </aside>
