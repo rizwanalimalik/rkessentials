@@ -35,7 +35,7 @@ function switchInputMode(mode) {
   }
 }
 
-// Multi-engine web scraper
+// Universal High-Reliability Scraper
 async function fetchProductData() {
   const urlInput = document.getElementById('productUrlInput');
   const url = urlInput.value.trim();
@@ -56,56 +56,22 @@ async function fetchProductData() {
   btnSpinner.style.display = 'inline-block';
   statusBox.style.display = 'block';
   statusBox.className = 'scrape-status info';
-  statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Contacting website server and extracting product media...';
+  statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Contacting website server and fetching images, description & price...';
 
-  // 1. First priority: Try Local Scraper Engine (Bypasses 100% of blocks, Cloudflare & CORS)
   try {
-    const localRes = await fetch(`http://localhost:5000/?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });
-    if (localRes.ok) {
-      const localData = await localRes.json();
-      if (localData && localData.success && localData.title) {
-        statusBox.className = 'scrape-status success';
-        statusBox.innerHTML = '<i class="fa-solid fa-bolt"></i> Extracted via Local Engine! Photos, title & specs ready.';
-        
-        // Clean naheed/magento prices if has leading dot
-        let cleanPrice = localData.price ? localData.price.replace(/^\./, '').replace(/[^0-9]/g, '') : '';
-        
-        populateEditor({
-          url: localData.url,
-          title: localData.title,
-          description: localData.description || '• Premium quality craftsmanship.\n• Authentic product with manufacturer warranty.\n• Fast nationwide delivery.',
-          originalPrice: cleanPrice,
-          sellingPrice: cleanPrice ? Math.round(parseFloat(cleanPrice) * 1.25).toString() : '',
-          comparePrice: cleanPrice ? cleanPrice : '',
-          category: detectCategory(localData.title + ' ' + url),
-          sku: `SKU-${Date.now().toString().slice(-5)}`,
-          images: (localData.images || []).filter(img => !img.includes('placeholder') && !img.includes('ellipsis') && !img.includes('close'))
-        });
-        showToast("✓ Product extracted! Decide your selling price.");
-        return;
-      }
-    }
-  } catch (localErr) {
-    console.log("Local engine check:", localErr.message);
-  }
-
-  // 2. Second priority: Public Web Proxies
-  try {
-    const htmlText = await fetchHtmlThroughProxies(url);
-    const parsedData = parseHtmlContent(htmlText, url);
-
+    const data = await extractProductWithCloudEngine(url);
     statusBox.className = 'scrape-status success';
-    statusBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> Scraped successfully! Review details and decide your selling price.';
-    populateEditor(parsedData);
-    showToast("Product extracted! Set your price.");
+    statusBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> Extracted successfully! Review photos and set your selling price.';
+    populateEditor(data);
+    showToast("✓ Product extracted! Decide your selling price.");
   } catch (err) {
-    console.warn("Proxy scraping error:", err);
-    // Parse from URL structure directly
-    const urlData = parseDirectlyFromUrl(url);
+    console.error("Scraping error:", err);
+    // Fallback parser directly from URL structure
+    const fallback = parseDirectlyFromUrl(url);
     statusBox.className = 'scrape-status warning';
-    statusBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Tip: Start <strong>start_engine.bat</strong> in the project folder to auto-extract from heavily protected sites like Naheed / Daraz without any blocks!';
-    populateEditor(urlData);
-    showToast("Title extracted. Review and set your price.");
+    statusBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Network timed out on this link. Title auto-extracted from link. You can add image links below or switch to <strong>Mode 2</strong>.';
+    populateEditor(fallback);
+    showToast("Review product details and set price.");
   } finally {
     btn.disabled = false;
     btnText.style.display = 'inline-block';
@@ -113,118 +79,88 @@ async function fetchProductData() {
   }
 }
 
-async function fetchHtmlThroughProxies(targetUrl) {
-  // Proxy 1: CodeTabs
-  try {
-    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const html = await res.text();
-      if (html && html.length > 300) return html;
-    }
-  } catch (e) {}
+// Production Cloud Scraper Engine
+async function extractProductWithCloudEngine(targetUrl) {
+  // Query with customized selector rules for e-commerce stores (Naheed, Daraz, Shopify, Magento, WooCommerce)
+  const apiEndpoint = `https://api.microlink.io?url=${encodeURIComponent(targetUrl)}` + 
+    `&data.price.selector=.price%2C%20.product-price%2C%20.pdp-price%2C%20[data-price]&data.price.type=text` +
+    `&data.images.selectorAll=img&data.images.attr=src`;
 
-  // Proxy 2: AllOrigins
-  try {
-    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.contents && data.contents.length > 300) return data.contents;
-    }
-  } catch (e) {}
-
-  // Proxy 3: Corsproxy
-  try {
-    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`);
-    if (res.ok) {
-      const html = await res.text();
-      if (html && html.length > 300) return html;
-    }
-  } catch (e) {}
-
-  throw new Error("Target site blocked public proxy scrapers.");
-}
-
-function parseHtmlContent(htmlText, targetUrl) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlText, 'text/html');
-
-  // Title
-  let title = 
-    doc.querySelector('meta[property="og:title"]')?.content ||
-    doc.querySelector('meta[name="twitter:title"]')?.content ||
-    doc.querySelector('h1')?.innerText?.trim() ||
-    doc.title?.trim() ||
-    "";
-
-  if (title) {
-    title = title.split('|')[0].split(' - ')[0].split(' : ')[0].trim();
-  } else {
-    title = parseSlugFromUrl(targetUrl);
+  const response = await fetch(apiEndpoint, { signal: AbortSignal.timeout(18000) });
+  
+  if (!response.ok) {
+    throw new Error(`API response failed with status ${response.status}`);
   }
 
-  // Description
-  let desc = 
-    doc.querySelector('meta[property="og:description"]')?.content ||
-    doc.querySelector('meta[name="description"]')?.content ||
-    doc.querySelector('#productDescription')?.innerText?.trim() ||
-    doc.querySelector('.product-description')?.innerText?.trim() ||
-    "";
+  const json = await response.json();
+  if (json.status !== 'success' || !json.data) {
+    throw new Error("Invalid scraper response");
+  }
 
-  // Images
-  let images = [];
-  const ogImg = doc.querySelector('meta[property="og:image"]')?.content;
-  if (ogImg && isUsableImage(ogImg)) images.push(cleanUrl(ogImg, targetUrl));
+  const d = json.data;
 
-  doc.querySelectorAll('img').forEach(img => {
-    let src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-zoom-image');
-    if (src && isUsableImage(src)) {
-      src = cleanUrl(src, targetUrl);
-      if (!images.includes(src)) images.push(src);
-    }
-  });
+  // 1. Title
+  let title = d.title || parseSlugFromUrl(targetUrl);
+  title = title.split('|')[0].split(' - ')[0].trim();
 
-  images = images.slice(0, 6);
+  // 2. Description
+  let desc = d.description || '';
+  if (desc.includes('Product Highlights:')) {
+    desc = desc.replace('Product Highlights:', 'Product Highlights:\n• ').replace(/([a-z])([A-Z])/g, '$1\n• $2');
+  }
 
-  // Price
-  let rawPrice = 
-    doc.querySelector('meta[property="product:price:amount"]')?.content ||
-    doc.querySelector('.price, .product-price, .pdp-price')?.innerText?.replace(/[^0-9.]/g, '') ||
-    "";
+  // 3. Price
+  let rawPrice = '';
+  if (d.price) {
+    rawPrice = d.price.replace(/[^0-9]/g, '');
+  }
+
+  // 4. Photos Filtering (High resolution product gallery images)
+  let cleanImages = [];
+
+  if (d.images && Array.isArray(d.images)) {
+    d.images.forEach(imgUrl => {
+      if (typeof imgUrl === 'string' && isProductImage(imgUrl)) {
+        let clean = imgUrl.startsWith('//') ? 'https:' + imgUrl : imgUrl;
+        if (!cleanImages.includes(clean)) {
+          cleanImages.push(clean);
+        }
+      }
+    });
+  }
+
+  // If specific catalog images not matched, check og:image
+  if (cleanImages.length === 0 && d.image && d.image.url && !d.image.url.includes('placeholder')) {
+    cleanImages.push(d.image.url);
+  }
+
+  // Deduplicate and limit to 6 images
+  cleanImages = cleanImages.slice(0, 6);
 
   return {
     url: targetUrl,
-    title: title || "Imported Product",
-    description: desc || "• Premium build quality and durable materials.\n• Packaged securely for delivery.\n• Full customer warranty included.",
-    originalPrice: parseFloat(rawPrice) ? Math.round(parseFloat(rawPrice)).toString() : "",
-    sellingPrice: "",
-    comparePrice: "",
-    category: detectCategory(title + " " + targetUrl),
+    title,
+    description: desc || "• High quality construction & materials.\n• Designed for comfort and durability.\n• Authentic packaging and fast delivery.",
+    originalPrice: rawPrice,
+    sellingPrice: rawPrice ? Math.round(parseFloat(rawPrice) * 1.25).toString() : '',
+    comparePrice: rawPrice ? rawPrice : '',
+    category: detectCategory(title + ' ' + targetUrl),
     sku: `SKU-${Date.now().toString().slice(-5)}`,
-    images: images
+    images: cleanImages
   };
 }
 
-function isUsableImage(src) {
-  if (!src) return false;
-  const s = src.toLowerCase();
-  const filter = ['logo', 'icon', 'badge', 'payment', 'loader', 'sprite', 'avatar'];
-  for (let f of filter) {
-    if (s.includes(f)) return false;
+function isProductImage(url) {
+  const s = url.toLowerCase();
+  // Filter out UI elements, logos, icons
+  if (s.includes('logo') || s.includes('icon') || s.includes('placeholder') || 
+      s.includes('ellipsis') || s.includes('close') || s.includes('loader') || 
+      s.includes('banner') || s.includes('avatar') || s.includes('payment') || 
+      s.includes('search') || s.includes('user') || s.includes('cart') || s.endsWith('.svg') || s.endsWith('.gif')) {
+    return false;
   }
-  return true;
-}
-
-function cleanUrl(src, base) {
-  if (src.startsWith('//')) return 'https:' + src;
-  if (src.startsWith('/')) {
-    try {
-      const u = new URL(base);
-      return `${u.origin}${src}`;
-    } catch (e) {
-      return src;
-    }
-  }
-  return src;
+  // Must be an actual product picture
+  return s.includes('product') || s.includes('catalog') || s.includes('media') || s.includes('images') || s.includes('uploads');
 }
 
 function parseSlugFromUrl(url) {
@@ -241,12 +177,12 @@ function parseSlugFromUrl(url) {
 
 function detectCategory(text) {
   const t = text.toLowerCase();
-  if (t.includes('shoe') || t.includes('sneaker')) return "Footwear";
-  if (t.includes('shirt') || t.includes('dress') || t.includes('jacket') || t.includes('hoodie')) return "Apparel";
+  if (t.includes('bag') || t.includes('handbag') || t.includes('wallet') || t.includes('purse')) return "Bags & Handbags";
+  if (t.includes('shoe') || t.includes('sneaker') || t.includes('sandal') || t.includes('heel')) return "Footwear";
+  if (t.includes('shirt') || t.includes('dress') || t.includes('kurti') || t.includes('suit') || t.includes('jacket')) return "Women's Fashion";
   if (t.includes('phone') || t.includes('watch') || t.includes('earbud') || t.includes('headphone') || t.includes('charger')) return "Electronics";
   if (t.includes('glass') || t.includes('frame') || t.includes('optic')) return "Eyewear";
-  if (t.includes('bag') || t.includes('wallet')) return "Bags & Wallets";
-  if (t.includes('beauty') || t.includes('perfume') || t.includes('cream')) return "Cosmetics";
+  if (t.includes('beauty') || t.includes('serum') || t.includes('cream') || t.includes('makeup')) return "Beauty & Cosmetics";
   return "General";
 }
 
@@ -255,7 +191,7 @@ function parseDirectlyFromUrl(url) {
   return {
     url,
     title,
-    description: "• High quality construction & materials.\n• Designed for comfort and everyday use.\n• Complete packaging with warranty.",
+    description: "• High quality materials and modern design.\n• Suitable for daily use and special occasions.\n• Secure delivery across Pakistan.",
     originalPrice: "",
     sellingPrice: "",
     comparePrice: "",
@@ -323,7 +259,7 @@ function populateEditor(data) {
   document.getElementById('productDescription').value = data.description || '';
   
   if (data.originalPrice) {
-    document.getElementById('originalPrice').value = data.originalPrice;
+    document.getElementById('originalPrice').value = `Rs. ${parseFloat(data.originalPrice).toLocaleString()}`;
     document.getElementById('sellingPrice').value = data.sellingPrice || Math.round(parseFloat(data.originalPrice) * 1.3);
   } else {
     document.getElementById('originalPrice').value = '';
