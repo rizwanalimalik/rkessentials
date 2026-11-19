@@ -29,8 +29,8 @@
       </div>
 
       <div class="header-stats">
-        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Products in Catalog</span>
-        <button class="btn btn-primary-sm" onclick="exportAs('woocommerce')"><i class="fa-solid fa-file-arrow-down"></i> Export WooCommerce CSV</button>
+        <button class="btn btn-connect-store" onclick="openStoreSettings()"><i class="fa-solid fa-plug"></i> <span id="storeStatusLabel">Connect WooCommerce</span></button>
+        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Uploaded</span>
       </div>
     </div>
   </header>
@@ -174,7 +174,8 @@ Description: Made of genuine leather, breathable sole, non-slip rubber..."></tex
         <!-- Final Action Bar -->
         <div class="action-footer">
           <button type="button" class="btn btn-secondary" onclick="resetEditor()"><i class="fa-solid fa-rotate-left"></i> Discard</button>
-          <button type="button" class="btn btn-publish" onclick="publishProductToStore()"><i class="fa-solid fa-cloud-arrow-up"></i> Save to WooCommerce Queue</button>
+          <button type="button" class="btn btn-direct-push" id="directPushBtn" onclick="pushDirectToWooCommerce()"><i class="fa-solid fa-cloud-arrow-up"></i> Push to My Website</button>
+          <button type="button" class="btn btn-publish" onclick="publishProductToStore()"><i class="fa-solid fa-list-check"></i> Save to Queue</button>
         </div>
 
       </div>
@@ -216,6 +217,47 @@ Description: Made of genuine leather, breathable sole, non-slip rubber..."></tex
     </aside>
 
   </main>
+
+  <!-- WooCommerce Store Connection Settings Modal -->
+  <div class="modal-overlay" id="storeModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-brands fa-wordpress"></i> Connect Your WooCommerce Store</h3>
+        <button class="modal-close" onclick="closeStoreSettings()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Enter your website URL and WooCommerce REST API keys to enable 1-Click direct pushing.</p>
+        
+        <div class="form-group">
+          <label>Website URL (e.g. https://yourstore.com)</label>
+          <input type="url" id="wooStoreUrl" placeholder="https://yourstore.com">
+        </div>
+
+        <div class="form-group">
+          <label>Consumer Key (ck_...)</label>
+          <input type="text" id="wooConsumerKey" placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <div class="form-group">
+          <label>Consumer Secret (cs_...)</label>
+          <input type="password" id="wooConsumerSecret" placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <div class="how-to-keys">
+          <strong><i class="fa-solid fa-key"></i> How to get keys (1 minute):</strong>
+          <ol>
+            <li>In WordPress Admin, go to <strong>WooCommerce > Settings > Advanced > REST API</strong>.</li>
+            <li>Click <strong>Add key</strong>, set Permissions to <strong>Read/Write</strong>, and click <strong>Generate API key</strong>.</li>
+            <li>Copy & paste the Consumer Key and Consumer Secret here!</li>
+          </ol>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeStoreSettings()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveWooStoreCredentials()"><i class="fa-solid fa-floppy-disk"></i> Save & Connect</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Notification Toast -->
   <div id="toast" class="toast"></div>

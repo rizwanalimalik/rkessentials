@@ -5,6 +5,7 @@ let savedProducts = [];
 const LOCAL_STORAGE_KEY = 'quicklist_products_catalog';
 
 document.addEventListener('DOMContentLoaded', () => {
+  updateStoreConnectionUI();
   const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (cached) {
     try {
@@ -470,7 +471,143 @@ function clearCatalog() {
   }
 }
 
-// 1-Click WooCommerce CSV Export
+// Store API Credentials Management
+const WOO_CREDENTIALS_KEY = 'quicklist_woo_store_credentials';
+
+function getStoredWooCredentials() {
+  const data = localStorage.getItem(WOO_CREDENTIALS_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+function updateStoreConnectionUI() {
+  const creds = getStoredWooCredentials();
+  const label = document.getElementById('storeStatusLabel');
+  if (creds && creds.url && creds.key) {
+    let cleanDomain = creds.url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    label.innerHTML = `<span style="color: #4ade80;">● Connected:</span> ${cleanDomain}`;
+  } else {
+    label.innerText = 'Connect WooCommerce';
+  }
+}
+
+function openStoreSettings() {
+  const creds = getStoredWooCredentials();
+  if (creds) {
+    document.getElementById('wooStoreUrl').value = creds.url || '';
+    document.getElementById('wooConsumerKey').value = creds.key || '';
+    document.getElementById('wooConsumerSecret').value = creds.secret || '';
+  }
+  document.getElementById('storeModal').style.display = 'flex';
+}
+
+function closeStoreSettings() {
+  document.getElementById('storeModal').style.display = 'none';
+}
+
+function saveWooStoreCredentials() {
+  let url = document.getElementById('wooStoreUrl').value.trim();
+  const key = document.getElementById('wooConsumerKey').value.trim();
+  const secret = document.getElementById('wooConsumerSecret').value.trim();
+
+  if (!url || !key || !secret) {
+    alert("Please enter your Store URL, Consumer Key, and Consumer Secret!");
+    return;
+  }
+
+  // Ensure url has https://
+  if (!url.startsWith('http')) {
+    url = 'https://' + url;
+  }
+  url = url.replace(/\/$/, ''); // Remove trailing slash
+
+  const creds = { url, key, secret };
+  localStorage.setItem(WOO_CREDENTIALS_KEY, JSON.stringify(creds));
+  updateStoreConnectionUI();
+  closeStoreSettings();
+  showToast("✓ WooCommerce store connected successfully!");
+}
+
+// 1-Click Direct Push to WooCommerce REST API
+async function pushDirectToWooCommerce() {
+  const creds = getStoredWooCredentials();
+  if (!creds || !creds.url || !creds.key || !creds.secret) {
+    openStoreSettings();
+    showToast("Please enter your WooCommerce API keys first");
+    return;
+  }
+
+  const title = document.getElementById('productTitle').value.trim();
+  const sellingPrice = document.getElementById('sellingPrice').value.trim();
+  const comparePrice = document.getElementById('comparePrice').value.trim();
+  const category = document.getElementById('productCategory').value.trim();
+  const sku = document.getElementById('productSku').value.trim();
+  const description = document.getElementById('productDescription').value.trim();
+
+  if (!title) {
+    alert("Please enter product title!");
+    return;
+  }
+  if (!sellingPrice) {
+    alert("Please decide and enter selling price!");
+    document.getElementById('sellingPrice').focus();
+    return;
+  }
+
+  const pushBtn = document.getElementById('directPushBtn');
+  const originalHtml = pushBtn.innerHTML;
+  pushBtn.disabled = true;
+  pushBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading to your site...';
+
+  // Format images array for WooCommerce REST API
+  const formattedImages = currentExtractedImages.map(img => ({ src: img }));
+
+  // Product payload according to WooCommerce API v3 spec
+  const productPayload = {
+    name: title,
+    type: 'simple',
+    regular_price: comparePrice ? comparePrice.toString() : sellingPrice.toString(),
+    sale_price: comparePrice ? sellingPrice.toString() : '',
+    description: description.replace(/\n/g, '<br>'),
+    short_description: description.split('\n')[0] || title,
+    sku: sku || undefined,
+    categories: category ? [{ name: category }] : undefined,
+    images: formattedImages
+  };
+
+  try {
+    // Basic Auth header for WooCommerce REST API
+    const authString = btoa(`${creds.key}:${creds.secret}`);
+    const apiEndpoint = `${creds.url}/wp-json/wc/v3/products`;
+
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${authString}`
+      },
+      body: JSON.stringify(productPayload)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result && result.id) {
+      showToast(`🎉 Product Published to your website! (ID #${result.id})`);
+      
+      // Also save to recent history
+      publishProductToStore();
+    } else {
+      console.error("WooCommerce error response:", result);
+      const errMsg = result.message || "Failed to push to website. Check API permissions.";
+      alert(`WooCommerce Upload Notice:\n${errMsg}\n\nTip: You can also use "Save to Queue" and export CSV anytime.`);
+    }
+  } catch (err) {
+    console.error("Direct push error:", err);
+    alert(`Could not connect to ${creds.url}. Please check:\n1. Is your website online?\n2. Did you enable WooCommerce > Settings > Advanced > Legacy API / REST API?`);
+  } finally {
+    pushBtn.disabled = false;
+    pushBtn.innerHTML = originalHtml;
+  }
+}
 function exportAs(type) {
   if (savedProducts.length === 0) {
     alert("No products in queue! Please add at least one product first.");
