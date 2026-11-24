@@ -1,3 +1,61 @@
+// Auth & Session Management
+const AUTH_KEY = 'quicklist_auth_creds';
+const SESSION_KEY = 'quicklist_session_active';
+
+function getStoredAuth() {
+  const cached = localStorage.getItem(AUTH_KEY);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) {}
+  }
+  return { username: 'admin', password: 'admin123' };
+}
+
+function checkAuthStatus() {
+  const isAuthenticated = sessionStorage.getItem(SESSION_KEY) === 'true';
+  const loginScreen = document.getElementById('loginScreen');
+  const appScreen = document.getElementById('appScreen');
+
+  if (isAuthenticated) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appScreen) appScreen.style.display = 'block';
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appScreen) appScreen.style.display = 'none';
+    const userInput = document.getElementById('loginUsername');
+    if (userInput) userInput.focus();
+  }
+}
+
+function handleLoginSubmit(event) {
+  event.preventDefault();
+  const usernameInput = document.getElementById('loginUsername').value.trim();
+  const passwordInput = document.getElementById('loginPassword').value.trim();
+  const errorBox = document.getElementById('loginError');
+  const errorText = document.getElementById('loginErrorText');
+
+  const auth = getStoredAuth();
+
+  if (usernameInput === auth.username && passwordInput === auth.password) {
+    sessionStorage.setItem(SESSION_KEY, 'true');
+    if (errorBox) errorBox.style.display = 'none';
+    checkAuthStatus();
+    showToast("✓ Welcome! Logged in successfully.");
+  } else {
+    if (errorBox) {
+      errorBox.style.display = 'flex';
+      errorText.innerText = "Invalid username or password. Please try again.";
+    }
+  }
+}
+
+function logoutApp() {
+  if (confirm("Are you sure you want to log out?")) {
+    sessionStorage.removeItem(SESSION_KEY);
+    checkAuthStatus();
+    showToast("You have been logged out.");
+  }
+}
+
 // State management
 let currentExtractedImages = [];
 let savedProducts = [];
@@ -5,6 +63,7 @@ let savedProducts = [];
 const LOCAL_STORAGE_KEY = 'quicklist_products_catalog';
 
 document.addEventListener('DOMContentLoaded', () => {
+  checkAuthStatus();
   updateStoreConnectionUI();
   const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (cached) {
@@ -269,8 +328,13 @@ function populateEditor(data) {
 
   document.getElementById('comparePrice').value = data.comparePrice || '';
 
+  // SEO Meta fields
+  document.getElementById('seoTitle').value = data.seoTitle || data.title || '';
+  document.getElementById('seoDescription').value = data.seoDescription || (data.description ? data.description.split('\n')[0].replace(/^•\s*/, '') : '');
+
   currentExtractedImages = [...(data.images || [])];
   renderExtractedImages();
+
   calculateMargin();
 
   document.getElementById('editorContainer').scrollIntoView({ behavior: 'smooth' });
@@ -372,6 +436,8 @@ function publishProductToStore() {
   const sku = document.getElementById('productSku').value.trim();
   const description = document.getElementById('productDescription').value.trim();
   const sourceUrl = document.getElementById('productUrlInput').value.trim();
+  const seoTitle = document.getElementById('seoTitle').value.trim();
+  const seoDescription = document.getElementById('seoDescription').value.trim();
 
   if (!title) {
     alert("Please enter a product title!");
@@ -383,6 +449,8 @@ function publishProductToStore() {
     return;
   }
 
+  const metaData = buildSeoMetaData(seoTitle, seoDescription);
+
   const newProduct = {
     id: `PRD-${Date.now()}`,
     title,
@@ -391,6 +459,9 @@ function publishProductToStore() {
     category,
     sku,
     description,
+    seoTitle,
+    seoDescription,
+    meta_data: metaData,
     images: [...currentExtractedImages],
     thumbnail: currentExtractedImages[0] || 'https://via.placeholder.com/150?text=Product+Image',
     sourceUrl,
@@ -405,11 +476,38 @@ function publishProductToStore() {
   resetEditor();
 }
 
+function buildSeoMetaData(seoTitle, seoDescription) {
+  const meta = [];
+  if (seoTitle) {
+    // Yoast SEO title
+    meta.push({ key: '_yoast_wpseo_title', value: seoTitle });
+    // Rank Math SEO title
+    meta.push({ key: 'rank_math_title', value: seoTitle });
+    // All in One SEO title
+    meta.push({ key: '_aioseop_title', value: seoTitle });
+    // Generic custom meta
+    meta.push({ key: 'meta_title', value: seoTitle });
+  }
+  if (seoDescription) {
+    // Yoast SEO description
+    meta.push({ key: '_yoast_wpseo_metadesc', value: seoDescription });
+    // Rank Math SEO description
+    meta.push({ key: 'rank_math_description', value: seoDescription });
+    // All in One SEO description
+    meta.push({ key: '_aioseop_description', value: seoDescription });
+    // Generic custom meta
+    meta.push({ key: 'meta_description', value: seoDescription });
+  }
+  return meta;
+}
+
 function resetEditor() {
   document.getElementById('editorContainer').style.display = 'none';
   document.getElementById('productUrlInput').value = '';
   document.getElementById('rawPasteInput').value = '';
   document.getElementById('rawImageInput').value = '';
+  document.getElementById('seoTitle').value = '';
+  document.getElementById('seoDescription').value = '';
   document.getElementById('scrapeStatusBox').style.display = 'none';
   currentExtractedImages = [];
 }
@@ -522,9 +620,25 @@ function saveWooStoreCredentials() {
 
   const creds = { url, key, secret };
   localStorage.setItem(WOO_CREDENTIALS_KEY, JSON.stringify(creds));
+
+  // Check if user entered new login credentials
+  const newUsernameEl = document.getElementById('newUsername');
+  const newPasswordEl = document.getElementById('newPassword');
+  if (newPasswordEl && newPasswordEl.value.trim()) {
+    const currentAuth = getStoredAuth();
+    const updatedAuth = {
+      username: (newUsernameEl && newUsernameEl.value.trim()) ? newUsernameEl.value.trim() : currentAuth.username,
+      password: newPasswordEl.value.trim()
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(updatedAuth));
+    newPasswordEl.value = '';
+    showToast("✓ Settings & new password saved successfully!");
+  } else {
+    showToast("✓ WooCommerce store connected successfully!");
+  }
+
   updateStoreConnectionUI();
   closeStoreSettings();
-  showToast("✓ WooCommerce store connected successfully!");
 }
 
 // 1-Click Direct Push to WooCommerce REST API
@@ -542,6 +656,8 @@ async function pushDirectToWooCommerce() {
   const category = document.getElementById('productCategory').value.trim();
   const sku = document.getElementById('productSku').value.trim();
   const description = document.getElementById('productDescription').value.trim();
+  const seoTitle = document.getElementById('seoTitle').value.trim();
+  const seoDescription = document.getElementById('seoDescription').value.trim();
 
   if (!title) {
     alert("Please enter product title!");
@@ -561,6 +677,9 @@ async function pushDirectToWooCommerce() {
   // Format images array for WooCommerce REST API
   const formattedImages = currentExtractedImages.map(img => ({ src: img }));
 
+  // Build SEO metadata array for WooCommerce (Yoast, Rank Math, All in One SEO)
+  const seoMetaData = buildSeoMetaData(seoTitle, seoDescription);
+
   // Product payload according to WooCommerce API v3 spec
   const productPayload = {
     name: title,
@@ -571,7 +690,8 @@ async function pushDirectToWooCommerce() {
     short_description: description.split('\n')[0] || title,
     sku: sku || undefined,
     categories: category ? [{ name: category }] : undefined,
-    images: formattedImages
+    images: formattedImages,
+    meta_data: seoMetaData.length > 0 ? seoMetaData : undefined
   };
 
   try {
@@ -614,8 +734,24 @@ function exportAs(type) {
     return;
   }
 
+  // Collect all unique meta keys across saved products
+  const allMetaKeys = new Set();
+  savedProducts.forEach(p => {
+    if (p.meta_data && Array.isArray(p.meta_data)) {
+      p.meta_data.forEach(m => {
+        if (m.key) allMetaKeys.add(m.key);
+      });
+    }
+  });
+  const metaKeyList = Array.from(allMetaKeys);
+
   // Exact WooCommerce product import headers
-  let csv = "Type,SKU,Name,Published,Is featured?,Visibility in catalog,Short description,Description,Regular price,Sale price,Categories,Images\n";
+  let headers = ["Type", "SKU", "Name", "Published", "Is featured?", "Visibility in catalog", "Short description", "Description", "Regular price", "Sale price", "Categories", "Images"];
+  metaKeyList.forEach(k => {
+    headers.push(`Meta: ${k}`);
+  });
+
+  let csv = headers.join(",") + "\n";
   
   savedProducts.forEach(p => {
     const nameEsc = `"${p.title.replace(/"/g, '""')}"`;
@@ -624,7 +760,29 @@ function exportAs(type) {
     const regularPrice = p.comparePrice ? p.comparePrice : p.price;
     const salePrice = p.comparePrice ? p.price : '';
 
-    csv += `simple,${p.sku},${nameEsc},1,0,visible,,${descEsc},${regularPrice},${salePrice},"${p.category}","${imgList}"\n`;
+    let row = [
+      'simple',
+      p.sku,
+      nameEsc,
+      '1',
+      '0',
+      'visible',
+      '""',
+      descEsc,
+      regularPrice,
+      salePrice,
+      `"${p.category.replace(/"/g, '""')}"`,
+      `"${imgList.replace(/"/g, '""')}"`
+    ];
+
+    // Append meta values corresponding to each header
+    metaKeyList.forEach(k => {
+      const match = (p.meta_data || []).find(m => m.key === k);
+      const val = match ? String(match.value || '').replace(/"/g, '""') : '';
+      row.push(`"${val}"`);
+    });
+
+    csv += row.join(",") + "\n";
   });
 
   downloadFile(csv, 'woocommerce-products-import.csv', 'text/csv');

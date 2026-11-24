@@ -12,28 +12,87 @@
 </head>
 <body>
 
-  <!-- Top App Navigation -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="logo-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
-        <div>
-          <h1>QuickList Pro</h1>
-          <span>1-Click WooCommerce Product Lister</span>
+  <!-- Screen 1: Secure Login View (Guards the Application) -->
+  <div id="loginScreen" class="login-wrapper">
+    
+    <!-- Top Corner Welcome Greeting -->
+    <div class="corner-greeting">
+      <div class="user-avatar"><i class="fa-solid fa-user-shield"></i></div>
+      <div class="user-name-text">Welcome <strong>Rizwan Ali Malik</strong></div>
+    </div>
+
+    <div class="login-card">
+      
+      <!-- Store Banner -->
+      <a href="https://www.rk-essentials.com" target="_blank" class="rk-store-banner">
+        <i class="fa-solid fa-globe"></i>
+        <span>www.rk-essentials.com</span>
+        <span class="verified-tag">Store Portal</span>
+      </a>
+
+      <div class="login-brand">
+        <div class="login-logo"><i class="fa-solid fa-bolt-lightning"></i></div>
+        <h2>QuickList Pro</h2>
+        <p>Enter your password to access product importer</p>
+      </div>
+
+      <div id="loginError" class="login-error-msg" style="display: none;">
+        <i class="fa-solid fa-triangle-exclamation"></i> <span id="loginErrorText">Incorrect username or password</span>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label><i class="fa-solid fa-user"></i> Username</label>
+          <input type="text" id="loginUsername" placeholder="e.g. admin" autocomplete="username" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" autocomplete="current-password" required>
+        </div>
+
+        <button type="submit" class="btn btn-fetch btn-block" style="padding: 14px; font-size: 1rem; margin-top: 8px;">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Unlock Application
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Screen 2: Main Application View -->
+  <div id="appScreen" style="display: none;">
+
+    <!-- Top App Navigation -->
+    <header class="app-header">
+      <div class="header-container">
+        <div class="brand">
+          <div class="logo-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
+          <div>
+            <h1>QuickList Pro</h1>
+            <span>1-Click WooCommerce Product Lister</span>
+          </div>
+        </div>
+
+        <!-- Banner in Header -->
+        <a href="https://www.rk-essentials.com" target="_blank" class="rk-store-banner" style="margin-bottom: 0;">
+          <i class="fa-solid fa-globe"></i>
+          <span>www.rk-essentials.com</span>
+          <span class="verified-tag">Official Store</span>
+        </a>
+
+        <!-- Corner Welcome Back in Application Header -->
+        <div class="header-user-welcome">
+          <div class="user-avatar" style="width: 26px; height: 26px; font-size: 0.75rem;"><i class="fa-solid fa-user-check"></i></div>
+          <span>Welcome Back <strong>Rizwan Ali Malik</strong></span>
+        </div>
+
+        <div class="header-stats">
+          <button class="btn btn-connect-store" onclick="openStoreSettings()"><i class="fa-solid fa-plug"></i> <span id="storeStatusLabel">Connect WooCommerce</span></button>
+          <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Uploaded</span>
+          <button class="btn-logout" onclick="logoutApp()" title="Log Out"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
       </div>
-
-      <div class="store-platform-badge">
-        <span class="platform-label"><i class="fa-brands fa-wordpress"></i> Store Platform:</span>
-        <strong style="color: #38bdf8;">WooCommerce (WordPress)</strong>
-      </div>
-
-      <div class="header-stats">
-        <button class="btn btn-connect-store" onclick="openStoreSettings()"><i class="fa-solid fa-plug"></i> <span id="storeStatusLabel">Connect WooCommerce</span></button>
-        <span class="stat-badge"><i class="fa-solid fa-box-archive"></i> <strong id="savedCount">0</strong> Uploaded</span>
-      </div>
-    </div>
-  </header>
+    </header>
 
   <main class="main-layout">
     
@@ -148,6 +207,25 @@ Description: Made of genuine leather, breathable sole, non-slip rubber..."></tex
           </div>
         </div>
 
+        <!-- SEO Meta Data Fields (Search Engine Optimization) -->
+        <div class="metadata-section seo-section">
+          <div class="metadata-head">
+            <label><i class="fa-solid fa-magnifying-glass"></i> Search Engine SEO Meta Data</label>
+            <span class="seo-badge"><i class="fa-brands fa-google"></i> Google & Search Engine Snippet</span>
+          </div>
+          <p class="field-hint">Set the SEO title and meta description that will appear in search engine results (supports Yoast, Rank Math & All in One SEO).</p>
+          
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="seoTitle"><i class="fa-solid fa-heading"></i> Product Name for SEO (SEO Meta Title)</label>
+            <input type="text" id="seoTitle" placeholder="e.g. Best Miss Rose Matte Lipstick in Pakistan | Long Lasting & Waterproof">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="seoDescription"><i class="fa-solid fa-align-left"></i> Details Meta Data for SEO (SEO Meta Description)</label>
+            <textarea id="seoDescription" rows="2" placeholder="e.g. Buy authentic Miss Rose matte lipstick online at the best price. Highly pigmented, creamy texture, waterproof and lasts all day. Fast delivery nationwide."></textarea>
+          </div>
+        </div>
+
         <!-- Photos Section -->
         <div class="photos-section">
           <div class="photos-head">
@@ -218,6 +296,8 @@ Description: Made of genuine leather, breathable sole, non-slip rubber..."></tex
 
   </main>
 
+  </div> <!-- /#appScreen -->
+
   <!-- WooCommerce Store Connection Settings Modal -->
   <div class="modal-overlay" id="storeModal" style="display: none;">
     <div class="modal-card">
@@ -241,6 +321,22 @@ Description: Made of genuine leather, breathable sole, non-slip rubber..."></tex
         <div class="form-group">
           <label>Consumer Secret (cs_...)</label>
           <input type="password" id="wooConsumerSecret" placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <!-- Security / Password Change Option -->
+        <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+          <strong style="display: block; color: #fff; font-size: 0.9rem; margin-bottom: 8px;">
+            <i class="fa-solid fa-lock"></i> Change App Password
+          </strong>
+          <div class="form-row" style="margin-bottom: 8px;">
+            <div class="form-group flex-1" style="margin-bottom: 0;">
+              <input type="text" id="newUsername" placeholder="New Username (optional)">
+            </div>
+            <div class="form-group flex-1" style="margin-bottom: 0;">
+              <input type="password" id="newPassword" placeholder="New Password (optional)">
+            </div>
+          </div>
+          <small style="color: var(--text-muted);">Leave empty to keep your existing login credentials.</small>
         </div>
 
         <div class="how-to-keys">
